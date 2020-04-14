@@ -1,0 +1,430 @@
+---
+title: "523 A3"
+output: html_document
+---
+####Question A8
+#####first simulation
+```{r}
+m1<-c(1,3,50)
+n1<-c(100,2000)
+set.seed(123)
+
+par(mfrow=c(2,3))
+for(m in m1){
+  for(n in n1){
+    dev<-numeric(1000)
+    for(k in 1:1000){
+      x<-runif(n,0,1)
+      pi<-exp(4*x-2)/(1+exp(4*x-2))
+      y<-rbinom(n,m,pi)
+      fit<-glm(cbind(y,m-y)~x,family = binomial)
+      dev[k]<-deviance(fit)
+    }
+    hist(dev,breaks=200,freq=FALSE)
+    z <- seq(floor(min(dev)),ceiling(max(dev)),by=0.01)
+    lines(z,dchisq(z,df=n-2),col="red")      
+  }
+}
+
+```
+
+By the results of this simulation, we see that when m is constant, a larger n will lead the histogram closer to normal distribution, but a smaller n leads to a better Chi-squared distribution curve. And from these plots, we can say that a larger m will result in a better performance in this simulation. We observe that when m=50, n=100, the diagram peroforms the best. the overlay of Chi-squared curve fits best on the histogram and the value of deviance is relatively small compare to other groups, so we can make an assumption that the closer the ratio of m and n is to one, the better the performance would be.
+
+
+#####second simulation
+```{r}
+m0<-c(1,3,50)
+n0<-c(100,2000)
+set.seed(123)
+par(mfrow=c(2,3))
+for(m in m0){
+  for(n in n0){
+    dev2<-c()
+    for(k in 1:1000){
+      x<-rbinom(n,1,0.5)
+      pi<-exp(-2+4*x)/(1+exp(-2+4*x))
+      y<-rbinom(n,m,pi)
+      fit<-glm(cbind(y,m-y)~x,family = binomial)
+      dev2[k]<-deviance(fit)
+    }
+    hist(dev2,breaks=200,freq=FALSE)
+    z <- seq(floor(min(dev2)),ceiling(max(dev2)),by=0.01)
+    lines(z,dchisq(z,df=n-2),col="red")  
+  }
+}
+```
+
+In the second simulation, we change the distribution of x from uniform to bernoulli, the results are very similar to the first simulation. The bes performance still occurs when m=50 and n=100. But for m=3, this groups performs better than the first one in both Chi-squared curves and the histograms. Based on the assumptions in the first simulation, we could make further assumption that when the distribution of x and y are similar, the simulation will perform better.
+
+
+
+####Question A9
+#####part a
+First we bin LMI for various levels of TEN
+```{r}
+library(catdata)
+data("foodstamp")
+LMI<-log(foodstamp[,4]+1)
+foodstamp <- cbind.data.frame(foodstamp,LMI)
+attach(foodstamp)
+
+#for TEN=0
+TEN0<-subset(foodstamp,TEN==0)
+
+ncat <- 10
+
+bins<-cut(TEN0$LMI,quantile(TEN0$LMI,prob=c(0:ncat)/ncat),include.lowest=T)
+lsat <- split(TEN0$y,bins)
+
+counts <- lapply(lsat,FUN=function(x){as.numeric(x > 0)})
+
+par(mfrow=c(1,2))
+
+logits0 <- as.numeric(lapply(counts,FUN=function(x){log((sum(x)+0.5)/(length(x)-sum(x)+0.5))}))
+
+props0 <- as.numeric(lapply(counts,FUN=function(x){sum(x)/length(x)}))
+
+TEN0.means <- as.numeric(lapply(split(TEN0$LMI,bins),mean))
+
+#for TEN=1
+TEN_1<-subset(foodstamp,TEN==1)
+
+ncat <- 10
+
+bins1<-cut(TEN_1$LMI,quantile(TEN_1$LMI,prob=c(0:ncat)/ncat),include.lowest=T)
+lsat1 <- split(TEN_1$y,bins1)
+
+counts1 <- lapply(lsat1,FUN=function(x){as.numeric(x > 0)})
+
+par(mfrow=c(1,2))
+
+logits1 <- as.numeric(lapply(counts1,FUN=function(x){log((sum(x)+0.5)/(length(x)-sum(x)+0.5))}))
+
+props1 <- as.numeric(lapply(counts1,FUN=function(x){sum(x)/length(x)}))
+
+TEN_1.means <- as.numeric(lapply(split(TEN_1$LMI,bins1),mean))
+
+plot(TEN0.means,logits0,pch=1,main="logits for TEN",ylab="logits")
+points(TEN_1.means,logits1,pch=1,col="red")
+plot(TEN0.means,props0,pch=1,main="props for TEN",ylab="props")
+points(TEN_1.means,props1,pch=1,col="red")
+```
+
+Comparing the two plots, we find that the logits plot and the props plot are very similar for the variable TEN, therefore the logit link is a suitable link for the data between the response and LMI with consideration of TEN. However, there is no clear trend for the relationship between LMI and proportions of foodstamps received from these plots. We do observe a slightly decreasing when the LMI increases for TEN=0, thus we can include TEN as a predictor in our GLM.
+
+Then we bin LMI again for various levels of SUP,
+```{r}
+#for SUP=0
+SUP0<-subset(foodstamp,SUP==0)
+
+ncat <- 10
+
+bins<-cut(SUP0$LMI,quantile(SUP0$LMI,prob=c(0:ncat)/ncat),include.lowest=T)
+lsat <- split(SUP0$y,bins)
+
+counts <- lapply(lsat,FUN=function(x){as.numeric(x > 0)})
+
+par(mfrow=c(1,2))
+
+logits0 <- as.numeric(lapply(counts,FUN=function(x){log((sum(x)+0.5)/(length(x)-sum(x)+0.5))}))
+
+props0 <- as.numeric(lapply(counts,FUN=function(x){sum(x)/length(x)}))
+
+SUP0.means <- as.numeric(lapply(split(SUP0$LMI,bins),mean))
+
+#for SUP=1
+SUP1<-subset(foodstamp,SUP==1)
+
+ncat <- 10
+
+bins<-cut(SUP1$LMI,quantile(SUP1$LMI,prob=c(0:ncat)/ncat),include.lowest=T)
+lsat <- split(SUP1$y,bins)
+
+counts <- lapply(lsat,FUN=function(x){as.numeric(x > 0)})
+
+par(mfrow=c(1,2))
+
+logits1 <- as.numeric(lapply(counts,FUN=function(x){log((sum(x)+0.5)/(length(x)-sum(x)+0.5))}))
+
+props1 <- as.numeric(lapply(counts,FUN=function(x){sum(x)/length(x)}))
+
+SUP1.means <- as.numeric(lapply(split(SUP1$LMI,bins),mean))
+
+plot(SUP0.means,logits0,pch=1,main="logits for SUP",ylab="logits")
+points(SUP1.means,logits1,pch=1,col="red")
+plot(SUP0.means,props0,pch=1,main="props for SUP",ylab="props")
+points(SUP1.means,props1,pch=1,col="red")
+
+```
+
+By comparing these two plots, the logits plot and the props plot are very different, then the logit link is not a good prediction in this situation. We see that supplementray income of people does affect the proportion of receiving foodstamps since there is no obvious trend shown on the plot. Thus we can conclude that SUP is not a significant predictor in our GLM.
+
+#####part b
+We use backword elimination to find a suitable model, from the summaries, we eliminate the terms with p-values greater than 0.05 and use anova to compare the models and to choose the appropriate model.
+
+```{r}
+m0<-glm(foodstamp$y~TEN*LMI*SUP,family=binomial)
+summary(m0)
+m1<-update(m0,.~. -LMI:TEN,family = binomial)
+anova(m0,m1,test="Chi")
+summary(m1)
+m2<-update(m1,.~. -LMI,family = binomial)
+anova(m1,m2,test="Chi")
+summary(m2)
+m3<-update(m2,.~. -LMI:SUP:TEN,family = binomial)
+anova(m2,m3,test="Chi")
+summary(m3)
+m4<-update(m3,.~. -SUP:TEN,family = binomial)
+anova(m3,m4,test="Chi")
+summary(m4)
+m5<-update(m4,.~. -SUP:LMI,family = binomial)
+anova(m4,m5,test="Chi")
+summary(m5)
+m6<-update(m5,.~. -SUP,family = binomial)
+anova(m5,m6,test="Chi")
+summary(m6)
+m7<-update(m6,.~. -TEN,family = binomial)
+anova(m6,m7,test="Chi")
+```
+Thus m6 is the most suitable GLM model. From the summary of m6, the p-values of variable TEN is very small, thus the variable is significant in this model. And the summary indicates a negative relationship between participation in foodstamps program and whether people have tenancy. When people have a tenancy, the odds of people participating in the foodstamp program will increase by 0.06 times. 
+
+Below are the diagnostic plots:
+```{r}
+par(mfrow=c(2,2))
+plot(m6)
+```
+
+The residual plot has no obvious pattern, this indicates that the linear relationship
+assumption of this model is true. 
+And in a logistic regression, a normal Q-Q plot does not have a big effect, so we do not need to take this plot into consideration. 
+By the Scale-Location plot, the points are not spread equally around the horizontal line, so the variance is not homogenous, this model has a problem of heteroscedasticity.
+Last, we look at the leverage plot, there are outlying values located in the lower right corner of the plot, therefore, we can conclude that there are extreme values that might influence the regression results in our dataset, that is, there might be outliers that needs to be removed.
+
+#####partc
+```{r}
+# First, read this functions into R
+roc.curve <- function(y,pred){
+  p <- seq(from=0,to=1,by=0.01)
+  out <- matrix(ncol=2,nrow=length(p))
+  for(i in 1:length(p)){
+    y.hat <- as.numeric(pred>p[i])
+    tmp <- cbind(y,y.hat)
+    I1 <- as.numeric(y==1)
+    I2 <- as.numeric(y.hat==1)
+    a <- sum(I1*I2)
+    b <- sum(I1*(1-I2))
+    c <- sum((1-I1)*I2)
+    d <- sum((1-I1)*(1-I2))
+    sens <- a/(a+b)
+    spec <- d/(c+d)
+    out[i,1] <- 1-spec
+    out[i,2] <- sens
+  }
+  out  
+}
+
+
+m8<-glm(foodstamp$y~1+LMI+TEN+SUP,family=binomial)
+
+pred1 <- predict(m0,type="response")
+roc.m0 <- roc.curve(foodstamp$y,pred1)
+
+pred2 <- predict(m8,type="response")
+roc.m8 <- roc.curve(foodstamp$y,pred2)
+
+pred3 <- predict(m6,type="response")
+roc.m6 <- roc.curve(foodstamp$y,pred3)
+
+plot(roc.m0,type="l",xlab="1-Specificity",ylab="Sensitivity",main="ROC curves",col="red")
+lines(roc.m8,col="blue")
+lines(roc.m6,col="dark green")
+
+```
+
+We know that the ROC curve represents the trade-off between sentisivity and specificity, and the more closer ROC curve is to the upper right corner, the better the performance is. From the plot, we observe that the red line and the blue line ahs similar performance, but the blue line is slightly better. Therefore the model LMI+TEN+SUP performs best.
+
+#####partd
+```{r}
+#ungrouped 
+dev<-deviance(m6)
+pchisq(dev,df=df.residual(m6),lower.tail=FALSE)
+
+#grouped
+beta<-m6$coefficients
+lsat <- split(foodstamp$y,TEN)
+counts <- lapply(lsat,FUN=function(x){as.numeric(x > 0)})
+
+observed <- lapply(counts,FUN=function(x){c(sum(x),length(x)-sum(x))})
+
+observed <- matrix(as.numeric(unlist(observed)),ncol=2,byrow=TRUE)
+
+fitted <- lapply(lsat,FUN=function(x){pi <- exp(beta[1]+x*beta[2])/(1+exp(beta[1]+x*beta[2])); c(sum(pi),sum(1-pi)) } )
+
+fitted <- matrix(as.numeric(unlist(fitted)),ncol=2,byrow=TRUE)
+
+X.2  <- sum(((observed-fitted)^2)/fitted)
+
+
+G.2 <- 2*sum(observed*log(observed/fitted))
+
+pchisq(X.2, df=1,lower.tail=FALSE)
+
+pchisq(G.2, df=1,lower.tail=FALSE)
+
+```
+
+```{r}
+ncat <- 3
+
+bins1 <- cut(LMI,quantile(LMI,prob=c(0:ncat)/ncat),include.lowest=T)
+
+levels(bins1) <- c(0,1,2)
+
+foodstamp <- cbind.data.frame(foodstamp,bins1)
+
+ftable(cbind.data.frame(foodstamp$y,SUP,TEN,bins1),col.vars=c("SUP","TEN"),row.vars=c("bins1"))
+
+mod <- glm(foodstamp$y~TEN,family="binomial")
+
+pi0 <- exp(coef(mod)[1])/(1+exp(coef(mod)[1]))
+pi1 <- exp(sum(coef(mod)))/(1+exp(sum(coef(mod))))
+
+O <- ftable(cbind.data.frame(foodstamp$y,SUP,TEN,bins1),row.vars=c("TEN","SUP","bins1"),col.vars=c("foodstamp$y"))
+
+observed <- cbind(O[,1],O[,2])
+observed[6,1]<-0.5
+observed[11,2]<-0.5
+observed[12,2]<-0.5
+
+fitted0 <- t(apply(observed[1:(2*ncat),],1,FUN <- function(x){n <- sum(x)
+      c(n-pi0*n,pi0*n)
+}))
+fitted1 <- t(apply(observed[7:12,],1,FUN <- function(x){n <- sum(x)
+c(n-pi1*n,pi1*n)
+}))
+
+fitted <- cbind(c(fitted0[,1],fitted1[,1]),c(fitted0[,2],fitted1[,2]))
+
+cbind(observed,round(fitted,2))
+
+X.2  <- sum(((observed-fitted)^2)/fitted)
+
+G.2 <- 2*sum(observed*log(observed/fitted))
+
+pchisq(X.2, df=df.residual(m6),lower.tail=FALSE)
+
+pchisq(G.2, df=1,lower.tail=FALSE)
+
+```
+
+In the goodness of fit test,the p-value both are greater than 0.05, thus the null hypothesis cannot be rejected, this means that there is no difference between the original model and the fitted model, thus the fit is good.
+
+
+#####part e
+We see that all values in observation #5 are zero, so it is an outlier. And for observation #66, compare to other data in the table, when y=1, the INC is small in general, however in this observation, the INC has exceeded 1000, so we can conclude that observation #66 is an outlier.
+
+```{r}
+foodstamp[5,]
+foodstamp[66,]
+foodstamp1<-rbind(foodstamp[1:4,],foodstamp[6:65,],foodstamp[67:150,])
+
+LMI1<-foodstamp1$LMI
+TEN1<-foodstamp1$TEN
+SUP1<-foodstamp1$SUP
+```
+
+To find a suitable GLM, we use backward elimination as in part b,
+```{r}
+full<-glm(foodstamp1$y~LMI1*TEN1*SUP1,family=binomial)
+summary(full)
+mnew<-update(full,.~. -SUP1,family = binomial)
+anova(mnew,full,test="Chi")
+summary(mnew)
+mnew1<-update(mnew,.~. -LMI1:SUP1,family = binomial)
+anova(mnew1,mnew,test="Chi")
+summary(mnew1)
+mnew2<-update(mnew1,.~. -LMI1:TEN1,family = binomial)
+anova(mnew2,mnew1,test="Chi")
+summary(mnew2)
+mnew3<-update(mnew2,.~. -LMI1:TEN1:SUP1,family = binomial)
+anova(mnew2,mnew3,test="Chi")
+summary(mnew3)
+mnew4<-update(mnew3,.~. -TEN1:SUP1,family = binomial)
+anova(mnew3,mnew4,test="Chi")
+summary(mnew4)
+mnew5<-update(mnew4,.~. -LMI1,family = binomial)
+anova(mnew4,mnew5,test="Chi")
+```
+
+we find that mnew4 is the most suitable model.This model contains the variable of LMI+TEN. Now we perform the diagnostic plot for this model.
+
+```{r}
+par(mfrow=c(2,2))
+plot(mnew4)
+```
+
+From the residual plot, we see that there is a obvious pattern of the dots distributed, so the linear assumption is not correct. The model is not linear, which is correct since it is a logistic model.
+We can observe that the Normal Q-Q plot is better than that in part b, although it does not contribute much to the diagnostic tests for logistic regression.
+In the Scale-Location plot, the points spread pretty much equally around the line, however, the line is not horizontal, which means that the variance is still not homogenous, but it performs better than in part b, the heteroscedasticity problem has been improved.
+Last, in the plot of leverage, we see that there is no extreme values in our dataset that will influence the regression results, so no outliers.
+
+Next we plot the ROC curve,
+```{r}
+pred <- predict(mnew4,type="response")
+roc.mnew <- roc.curve(foodstamp1$y,pred)
+plot(roc.mnew,type="l",xlab="1-Specificity",ylab="Sensitivity",main="ROC curves for new dataset",col="red")
+lines(roc.m8,col="blue")
+```
+
+We see that the ROC curve is closer to the upper right corner of the axis compare to the model in part c, this means that the new model after we remove the outliers performs better on the trade-off between sensitivity and specificity.
+Goodness of fit test:
+```{r}
+summary(mnew4)
+#ungrouped
+pchisq(deviance(mnew4),df=df.residual(mnew4),lower.tail = FALSE)
+
+#grouped
+ncat <- 3
+
+bins2 <- cut(LMI1,quantile(LMI1,prob=c(0:ncat)/ncat),include.lowest=T)
+
+levels(bins2) <- c(0,1,2)
+
+foodstamp1 <- cbind.data.frame(foodstamp1,bins2)
+
+ftable(cbind.data.frame(foodstamp1$y,SUP1,TEN1,bins2),col.vars=c("SUP1","TEN1"),row.vars=c("bins2"))
+
+
+pi0 <- exp(coef(mnew4)[1])/(1+exp(coef(mnew4)[1]))
+pi1 <- exp(sum(coef(mnew4)))/(1+exp(sum(coef(mnew4))))
+
+O <- ftable(cbind.data.frame(foodstamp1$y,SUP1,TEN1,bins2),row.vars=c("TEN1","SUP1","bins2"),col.vars=c("foodstamp1$y"))
+
+observed <- cbind(O[,1],O[,2])
+observed[6,1]<-0.5
+observed[9,2]<-0.5
+observed[11,2]<-0.5
+observed[12,2]<-0.5
+
+nrows <- ncat*2*2
+fitted.mod1 <- matrix(0,nrow=nrows,ncol=2)
+for(i in 1:148){
+  rowind <- TEN1[i]*(2*ncat)+SUP1[i]*(ncat)+as.numeric(bins1[i])
+  fitted.mod1[rowind,1] <- fitted.mod1[rowind,1]+1-pred[i]
+  fitted.mod1[rowind,2] <- fitted.mod1[rowind,2]+pred[i]
+}
+
+cbind(observed,round(fitted.mod1,1),round(fitted,1))
+
+X.2  <- sum(((observed-fitted.mod1)^2)/fitted.mod1)
+G.2 <- 2*sum(observed*log(observed/fitted.mod1))
+
+pchisq(X.2, df=1,lower.tail=FALSE)
+pchisq(G.2, df=1,lower.tail=FALSE)
+```
+
+By the goodness of fit test, the null hypothesis is not rejected, thus there is no difference between the original data and the fitted data. Therefore we can say that it is a good model.
+From the summary of the model, we see that both variable LMI and TEN are significant, and if a person has a tenancy, the odds of participating in foodstamp program will increase by 0.2 times if the log(income) increase by 5 times. And overall we can conclude that there is a decreasing relationship between the predictor LMI, TEN and the odds of participating in the foodstamp program.
+
+#####part e
+From the analysis of the data so far, we can say that the proportional of people participating in foodstamp programs is mostly related in people's income and whether they have a tenancy. And by the models we compared, whether people have the supplementary income does not play an important role in this analysis. Overall, people with higher income and with a tenancy will have a lower proportion among them to participating in the foodstamp program, while a large proportion of people with lower income or people without a tenancy will receive a foodstamp. These two factors are independent of each other, the effect of these two factors alone will not be influnced by the other. 
