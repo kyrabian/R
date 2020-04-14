@@ -1,2 +1,2 @@
-####Math 523 Assignment 
-#####Logistic Regression
+Math 523 Assignment
+Logistic Regression
