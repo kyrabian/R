@@ -1,0 +1,144 @@
+---
+title: "523 A4"
+output: html_document
+---
+####Question A11
+#####part a)
+```{r}
+Y<- cbind(c(28,4,41,12),c(45,12,44,7),c(29,5,20,3),c(26,2,20,1))
+colnames(Y)<-c("ProgressiveDisease","NoChange","PartialRemission","CompleteRemission")
+therapy <- c("S","S","A","A")
+gender <- rep(c("M","F"),2)
+table<-expand.grid(Y=Y,therapy=therapy,gender=gender)
+
+library(nnet)
+m1<-multinom(Y~therapy)
+
+marg.counts <- tapply(table$Y,list(factor(table$therapy,levels=c("S","A"))),length)
+
+row.names.marg <- rev(expand.grid(dimnames(marg.counts)))
+
+fitted.counts <- round(as.vector(marg.counts)*fitted(m1)[!duplicated(as.data.frame(fitted(m1))),],1)
+
+prob<-structure(.Data=as.data.frame(fitted.counts),row.names=apply(row.names.marg,1,paste,collapse=" "))
+prob
+prob_prog_S<-prob[1,1]
+prob_nochange_S<-prob[2,1]
+prob_prog_A<-prob[1,2]
+prob_nochange_A<-prob[2,2]
+
+OR<-prob_prog_S/prob_nochange_S/(prob_prog_A/prob_nochange_A)
+OR
+
+se<-sqrt(1/prob[1,1]+1/prob[2,1]+1/prob[1,2]+1/prob[2,2])
+exp(log(OR)-se*1.96)
+exp(log(OR)+se*1.96)
+
+
+library(questionr)
+M <- matrix(c(prob[1,1],prob[2,1],prob[1,2],prob[2,2]), ncol = 2)
+odds.ratio(M)
+
+```
+
+The odds ratio is 0.5403, which means that the odds of progressive death with therapy S is 54% less than that with therapy A. And from confidence interval of (0.27,1.01), the 95% upper interval cross 1, and the p value is greater than 0.05, we can conclude that there is no statistically significant difference between the group with therapy S and the group with therapy A.
+
+#####part b
+```{r}
+library(VGAM)
+v1<-vglm(Y~therapy,propodds(reverse=F))
+
+
+summary(v1)
+beta<-coefficients(v1)
+OR<-exp(beta[4])
+OR
+exp(confint(v1)[4,1])
+exp(confint(v1)[4,2])
+```
+
+The odds ratio is 0.57, which means that for each category of the responses, the number of counts for each group with therapy S is 57% less than that with therapy A, and the confidence interval showa that the true effects are between 37% and 85%, and since the upper bound of CI does not cross 1, it means that there will be differences between groups with/without therapy and therapy is a significant factor in this trial.
+
+#####part c
+```{r} 
+#baseline logit model
+m2 <- multinom(Y~therapy+gender) 
+m3<-multinom(Y~therapy)
+anova(m2,m3,test="Chi")
+
+#cumulative logit model
+library(MASS)
+
+table$Y=as.factor(Y)
+m4 <- polr(table$Y~table$therapy+table$gender) 
+drop1(m4,test="Chisq")
+m5 <- polr(table$Y~table$therapy)
+anova(m5,m4,test="Chi")
+```
+
+1).When we use the baseline logit model:
+By anova, we see that the p value of the chi-squared test is greater than 0.05, therefore we cannot reject the null hypothesis, the first model(model only contains the factor of therapy) is the most adequate simplification of the saturated model. Thus, we can conclude that Gender is not a significant factor, it should not be included.
+2).When we use the cumulative logit model:
+By anova, we see that the p value of the chi-squared test is greater than 0.05, therefore we cannot reject the null hypothesis, the first model(model only contains the factor of therapy) is the most adequate simplification of the saturated model. Thus, we can conclude that Gender is not a significant factor, it should not be included.
+
+
+####Question A12
+#####part a
+```{r}
+Y <- c(76,160,6,25,114,181,11,48)
+G <- factor(c("M","M","M","M","F","F","F","F"),levels=c("M","F"))
+I <- factor(c("Yes","Yes","No","No","Yes","Yes","No","No"),levels=c("Yes","No"))
+H <- factor(c("Yes","No","Yes","No","Yes","No","Yes","No"),levels=c("Yes","No"))
+GSS <- data.frame(cbind(Y,G,I,H))
+
+Tab <- xtabs(Y~H+I+G)
+#mutual independence
+m1 <- glm(Y~I+G+H,family=poisson,data=GSS)
+#joint independence, G independent of(I,H)
+m2 <- glm(Y~I+G+H+I:H,family=poisson,data=GSS)
+#conditional independence
+m3 <- glm(Y~I+G+H+I:G+H:G,family=poisson,data=GSS)
+#homogeneous association
+m4 <- glm(Y~I+G+H+I:G+G:H+I:H,family=poisson,data=GSS)
+#saturated model
+mfull<-glm(Y~I*G*H,family=poisson,data=GSS)
+
+#select the model
+anova(m1,mfull,test="Chi")
+anova(m2,mfull,test="Chi")
+anova(m3,mfull,test="Chi")
+anova(m4,mfull,test="Chi")
+anova(m2,m4,test="Chi")
+
+summary(m2)
+```
+We compare the models with different independence(mutual,joint and conditional) with the saturated model, and by anova, we can conclude that in model m2, the null hypothesis that m2 is the most adequate simplification of the saturated model cannot be rejected.
+Thus m2 will be selected for the most suitable model. And the variable G(gender) is joint independent of (I,H), and I and H are dependent of each other.
+
+#####part b
+```{r}
+m<-glm(Y~H*I+I*G,family=poisson,data=GSS)
+
+summary(m)
+beta<- coefficients(m)
+
+Ests <- as.numeric(coef(m))
+
+odds.ratio <- exp(Ests[5])
+odds.ratio
+exp(confint(m)[5,1])
+exp(confint(m)[5,2])
+
+```
+
+The odds ratio between H and I is 2.39, with a confidence interval between 1.40 to 4.30, it means that H and I has positive association with each other and thus H and I are dependent. And this relationship does not change with the variable G(gender) since the log odds ratio do not depend on the value G takes.
+
+#####part c (bonus)
+```{r}
+mlog<-glm(H~I,family=binomial,weights=Y)
+summary(mlog)
+coef(mlog)
+coef(m)
+```
+
+We observe that the coefficient of the equivalent logistic model is the same as the coefficient of H,I interaction term in the log-linear model, this verifies that the logistic model we have is equivalent to the log-linear model.
