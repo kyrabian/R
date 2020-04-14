@@ -1,0 +1,113 @@
+---
+title: "Math 523 Assignment 1 R"
+output: html_document
+---
+###Question 3
+####part a
+```{r}
+library(MASS)
+data(mammals)
+attach(mammals)
+head(mammals)
+
+fit<-lm(brain~body)
+plot(body,brain)
+abline(coef(fit))
+summary(fit)
+plot(fitted(fit),rstandard(fit))
+```
+
+From summary and the residual plot above, we see that a simple linear regression model is not a good fit for this set of data, therefore, we need to transform the variable and the response using log. Here is the new model after transformation:
+```{r}
+#transformation
+fit1<-lm(log(brain)~log(body))
+plot(log(body),log(brain))
+abline(coef(fit1))
+summary(fit1)
+plot(fitted(fit1),rstandard(fit1))
+```
+
+From summary, we can see that this fit has a relatively large R-squared value which means this model explaines the data very well and the corresponding p-values for the estimated coefficients are very small, thus significant. And we can also see that there is no patterns in the residual plot. Therefore we can conclude that it is a good fit. 
+Interpretation:
+From this model, we can conclude that if the average body weight of mammals increase two times, the average brain weight will increases 1.68 times.
+
+####part b
+```{r}
+m1<-lm(brain~body) 
+m2<-glm(brain~body,family=gaussian(link="identity"))
+summary(m1)
+summary(m2)
+```
+
+#####1)
+the estimated coefficients and the standard errors for these two models are the same.
+
+#####2)
+the estimated sigma^2 of m1 is the Residual standard error squared:
+```{r}
+334.7^2
+```
+which is 112024.1 by calculation, and the estimated dispersion parameter reported in m2 is 112037.3, this two values are very close, so we can say the dispersion in m2 is the same as the mean square error in m1.
+
+#####3)
+In model m2, the Null deviance is 52790554, the Residual deviance is 6722239.
+
+```{r}
+anova(m1)
+```
+
+from anova, we can see that in model m1, the total sum of squares is
+```{r}
+TSS<-46068314+6722239
+TSS
+```
+and the residual sum of squares is 6722239, the regression-explained sum of square is 46068314.
+Thus we can conclude that the total sum of squares in m1 is the null deviance in m2, the residual sum of squarein  m1 is the residual deviance in m2, and the null deviance(total sum of square) is equal to the sum of the residual sum of square and the regression explained sum of square.
+
+#####4)
+the F-statistics is (SSE/p-1)/(SSR/n-p), from 3), we can find the corresponding SSE and SSR value using the summary of m2.
+```{r}
+Fstats<-((52790554-6722239)/(2-1))/(6722239/(62-2))
+Fstats
+```
+the result is 411.1872, which is the same as in m1.
+
+####part c
+```{r}
+m3<-glm(brain~log(body),family=Gamma(link="log"))
+summary(m3)
+```
+
+The estimated coefficients for the intercept is 2.3670 and for the parameter is 0.7685.
+From summary we see that the p-value for both coefficients are very small(<0.05), thus both of the coefficients are significant.
+Interpretation: if the average body weight of mammals increase two times, the average brain weight of mammals will increase 1.70 times.
+
+####part d
+```{r}
+m4<-glm(brain~log(body),family=Gamma(link="inverse"))
+summary(m4)
+x<-log(body)
+x<-seq(from=-5,to=10,by=0.01)
+plot(log(body),brain,xlim=c(-5,10),ylim=c(0,200))
+lines(x,1/(coef(m4)[1]+coef(m4)[2]*x),col="darkgreen")
+lines(x,exp(coef(m3)[1]+coef(m3)[2]*x),col="blue")
+```
+
+By comparing the summary of m3 and m4, we see that the AIC of m3 is smaller than m4, and the dispersion parameter in m3 is smaller than that in m4, therefore m3 fits better than m4. For model interpretation, m3 suggestd that the average brain weight and the average body weight are positively related, while in m4, the two parameters are negatively related, but we would prefer that the relationship between average body weights and average brain weights of mammals is positive, thus we would choose the model in part c instead of this model. Also, from the plot above, we could as well see that the m3 model has a better fit line than m4.
+
+####part e
+```{r}
+summary(fit1)
+summary(m3)
+```
+This two models give very close values of least square estimators and from their p-values, all estimate coefficients are significant, thus both models are good from model interpretation. By comparing the RSE in model1 and the dispersion parameter in m3, we can see that model1 gives a smaller value, therefore a better fit.
+
+####part f
+```{r}
+x<-log(450)
+exp(fit1$coefficients[1]+x*fit1$coefficients[2])
+exp(m3$coefficients[1]+x*m3$coefficients[2])
+1/(m4$coefficients[1]+x*m4$coefficients[2])
+```
+I would trust the model in part a the most, since by part d and e, we could conclude that the first model has the best fit.
+
